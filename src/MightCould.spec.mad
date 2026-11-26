@@ -1,0 +1,39 @@
+import Might from "might"
+import Baton from "might/Baton"
+import Study from "study"
+import Whim from "whim"
+import Failure from "whim/Failure"
+
+import MC from "@/MightCould"
+
+
+
+Study.report(
+  (_) => Might.run(
+    do {
+      b <- Baton.might(0)
+      w = MC.fromMight(Baton.changeDrop((n) => n + 1, b))
+      before <- Baton.grab(b)
+      _ <- MC.fulfillM((_) => Might.mighty({}), (_) => Might.mighty({}), w)
+      after <- Baton.grab(b)
+      return Might.mighty(#[before, after])
+    },
+  ),
+  "fromMight defers until fulfilled",
+  [#[0, #[0, 1]]],
+)
+Study.report(
+  (_) => Might.run(
+    do {
+      b <- Baton.might(0)
+      _ <- MC.fulfillM(
+        (_) => Baton.changeDrop((n) => n + 1, b),
+        (_) => Might.mighty({}),
+        Whim.bad(Failure.Quitter(1)),
+      )
+      return Baton.grab(b)
+    },
+  ),
+  "fulfillM routes failures to the bad path",
+  [#[0, 1]],
+)

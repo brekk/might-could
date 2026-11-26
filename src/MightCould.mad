@@ -1,0 +1,19 @@
+import type { Might } from "might"
+import type { Whim } from "whim"
+import type { Failure } from "whim/Failure"
+
+import Might from "might"
+import Whim from "whim"
+
+
+
+fromMight :: Might a -> Whim a
+export fromMight = pipe(
+  Might.toWish,
+  Whim.Whim,
+)
+alias Meh = Might {}
+fulfillM :: (Failure -> Meh) -> (a -> Meh) -> Whim a -> Might Meh
+export fulfillM = (badPath, goodPath, w) => Might.Might(
+  () => Might.Might(Whim.fulfill((f) => Might.run(badPath(f)), (x) => Might.run(goodPath(x)), w)),
+)
