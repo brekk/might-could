@@ -1,0 +1,26 @@
+{
+  "buildHash": "0d764bde803622d3c1a52eff841e8bff",
+  "jsApi": {
+    "apiInstances": [],
+    "apiAliases": {},
+    "apiInterfaces": {},
+    "apiNames": {
+      "getUncommitted": "String -> Wish { exitCode :: Integer, stderr :: String, stdout :: String } (List #[String, String])",
+      "getUnstaged": "String -> Wish { exitCode :: Integer, stderr :: String, stdout :: String } (List #[String, String])",
+      "check": "String -> Wish a { git :: Boolean, uncommitted :: Boolean, unstaged :: Boolean }"
+    },
+    "apiTypes": {}
+  },
+  "llvmApi": {
+    "apiInstances": [],
+    "apiAliases": {},
+    "apiInterfaces": {},
+    "apiNames": {
+      "getUncommitted": "String -> Wish { exitCode :: Integer, stderr :: String, stdout :: String } (List #[String, String])",
+      "getUnstaged": "String -> Wish { exitCode :: Integer, stderr :: String, stdout :: String } (List #[String, String])",
+      "check": "String -> Wish a { git :: Boolean, uncommitted :: Boolean, unstaged :: Boolean }"
+    },
+    "apiTypes": {}
+  },
+  "versionHash": "e5d18b4e2c1dc1975775ee385ab41c85"
+}

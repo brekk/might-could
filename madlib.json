@@ -1,0 +1,8 @@
+{
+  "name": "might-could",
+  "version": "0.0.1",
+  "main": "src/MightCould.mad",
+  "importAliases": {
+    ".": "src"
+  }
+}
