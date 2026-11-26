@@ -1,13 +1,12 @@
 {
-  "buildHash": "0d764bde803622d3c1a52eff841e8bff",
+  "buildHash": "7866978f14b8ee617a7617a75af51346",
   "jsApi": {
     "apiInstances": [],
     "apiAliases": {},
     "apiInterfaces": {},
     "apiNames": {
-      "getUncommitted": "String -> Wish { exitCode :: Integer, stderr :: String, stdout :: String } (List #[String, String])",
-      "getUnstaged": "String -> Wish { exitCode :: Integer, stderr :: String, stdout :: String } (List #[String, String])",
-      "check": "String -> Wish a { git :: Boolean, uncommitted :: Boolean, unstaged :: Boolean }"
+      "fromMight": "Might a -> Whim a",
+      "fulfillM": "(Failure -> Might {}) -> (a -> Might {}) -> Whim a -> Might (Might {})"
     },
     "apiTypes": {}
   },
@@ -16,11 +15,10 @@
     "apiAliases": {},
     "apiInterfaces": {},
     "apiNames": {
-      "getUncommitted": "String -> Wish { exitCode :: Integer, stderr :: String, stdout :: String } (List #[String, String])",
-      "getUnstaged": "String -> Wish { exitCode :: Integer, stderr :: String, stdout :: String } (List #[String, String])",
-      "check": "String -> Wish a { git :: Boolean, uncommitted :: Boolean, unstaged :: Boolean }"
+      "fromMight": "Might a -> Whim a",
+      "fulfillM": "(Failure -> Might {}) -> (a -> Might {}) -> Whim a -> Might (Might {})"
     },
     "apiTypes": {}
   },
-  "versionHash": "e5d18b4e2c1dc1975775ee385ab41c85"
+  "versionHash": "25e64aa754c310d45c1e084d574c1bb0"
 }
