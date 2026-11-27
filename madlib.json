@@ -4,5 +4,29 @@
   "main": "src/MightCould.mad",
   "importAliases": {
     ".": "src"
-  }
+  },
+  "dependencies": [
+    {
+      "minVersion": "3.0.1",
+      "url": "https://github.com/brekk/whim/archive/refs/tags/v3.0.1.zip",
+      "description": "Wishes without the hassle of the bad path",
+      "name": "whim"
+    },
+    {
+      "minVersion": "1.0.0",
+      "url": "https://github.com/brekk/might/archive/refs/tags/v1.0.0.zip",
+      "description": "effects for madlib",
+      "name": "might"
+    },
+    {
+      "minVersion": "1.0.0",
+      "url": "https://github.com/brekk/party-bus/archive/refs/tags/v1.0.0.zip",
+      "description": "PartyBus"
+    },
+    {
+      "minVersion": "0.2.0",
+      "url": "https://github.com/brekk/study/archive/refs/tags/v0.2.0.zip",
+      "description": "Study"
+    }
+  ]
 }

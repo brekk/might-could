@@ -6,7 +6,7 @@ import { Wish } from "Wish"
 import Might from "might"
 import Baton from "might/Baton"
 import Study from "study"
-import { Whim } from "whim"
+import Whim from "whim"
 import Failure from "whim/Failure"
 
 import Fiber from "@/Fiber"
@@ -34,7 +34,7 @@ Study.report(
     do {
       cancels <- Baton.might(0)
       failed <- Baton.might(0)
-      never = Whim(
+      never = Whim.Whim(
         Wish(
           (_, _) => (_) => {
             Might.run(Baton.changeDrop((c) => c + 1, cancels))
@@ -67,7 +67,7 @@ import { Just, Nothing } from "Maybe"
 
 // a Whim that completes when the test says so
 controllable :: Baton (Maybe #[Failure -> {}, a -> {}]) -> Whim a
-controllable = (slot) => Whim(
+controllable = (slot) => Whim.Whim(
   Wish(
     (bad, good) => {
       Might.run(Baton.changeDrop((_) => Just(#[bad, good]), slot))
@@ -173,3 +173,81 @@ Study.report(
   "cancelled joiner is skipped",
   [#[0, #[0, 1]]],
 )
+
+/*
+count = (b) => Baton.changeDrop((c) => c + 1, b)
+Study.report(
+  (_) => Might.run(
+    do {
+      slot <- Baton.might(Nothing)
+      released <- Baton.might(0)
+      delivered <- Baton.might(0)
+      cancel <- MC.fulfillM(
+        (_) => count(delivered),
+        (_) => count(delivered),
+        Whim.bracketWithCancel(
+          (_) => MC.fromMight(count(released)),
+          (_) => controllable(slot),
+          Whim.good(1),
+        ),
+      )
+      _ <- cancel
+      r1 <- Baton.grab(released)
+      _ <- succeedWith(slot, 0)
+      r2 <- Baton.grab(released)
+      d <- Baton.grab(delivered)
+      return Might.mighty(#[r1, r2, d])
+    },
+  ),
+  "bracketC: cancel during use",
+  [#[0, #[1, 1, 0]]],
+)
+// cancel during acquire: no release yet; a late acquire is released, not delivered
+Study.report(
+  (_) => Might.run(
+    do {
+      slot <- Baton.might(Nothing)
+      released <- Baton.might(0)
+      delivered <- Baton.might(0)
+      cancel <- MC.fulfillM(
+        (_) => count(delivered),
+        (_) => count(delivered),
+        Whim.bracketWithCancel(
+          (_) => MC.fromMight(count(released)),
+          (_) => Whim.good(0),
+          controllable(slot),
+        ),
+      )
+      _ <- cancel
+      r1 <- Baton.grab(released)
+      _ <- succeedWith(slot, 5)
+      r2 <- Baton.grab(released)
+      d <- Baton.grab(delivered)
+      return Might.mighty(#[r1, r2, d])
+    },
+  ),
+  "bracketC: cancel during acquire",
+  [#[0, #[0, 1, 0]]],
+)
+// cancel after completion: release ran once and is not repeated
+Study.report(
+  (_) => Might.run(
+    do {
+      released <- Baton.might(0)
+      cancel <- MC.fulfillM(
+        (_) => Might.mighty({}),
+        (_) => Might.mighty({}),
+        Whim.bracketWithCancel(
+          (_) => MC.fromMight(count(released)),
+          (_) => Whim.good(1),
+          Whim.good(2),
+        ),
+      )
+      _ <- cancel
+      return Baton.grab(released)
+    },
+  ),
+  "bracketC: cancel after completion",
+  [#[0, 1]],
+)
+*/
