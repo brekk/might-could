@@ -1,0 +1,147 @@
+// Fiber.mad (not compiled)
+import type { Either } from "Either"
+
+import type { Might } from "might"
+import type { Baton } from "might/Baton"
+import type { Whim } from "whim"
+// placeholder
+import type {
+  Failure,
+} from "whim/Failure"
+
+import { Left, Right } from "Either"
+import Wish from "Wish"
+
+import Might from "might"
+import Baton from "might/Baton"
+import { Whim } from "whim"
+import { Failure } from "whim/Failure"
+
+import { fulfillM } from "@/MightCould"
+
+
+
+type Outcome a = Running | Finished(Either Failure a) | Killed
+alias FiberState a = {
+  cancel :: Might {},
+  outcome :: Outcome a,
+  waiters :: List (Outcome a -> Might {}),
+}
+export type Fiber a = Fiber(Baton (FiberState a))
+killedFailure :: Failure
+killedFailure = Failure("might-could", "Fiber", "killed")
+settle :: Baton (FiberState a) -> Outcome a -> Might {}
+settle = (st, out) => do {
+  s <- Baton.grab(st)
+  return where(s.outcome) {
+    Running =>
+      do {
+        _ <- Baton.changeDrop((cur) => ({ outcome: out, waiters: [], cancel: cur.cancel }), st)
+        return Might.forEach((w) => w(out), s.waiters)
+      }
+
+    _ =>
+      Might.mighty({})
+  }
+}
+// the canceller can arrive after a synchronous completion, so only store it while Running
+storeCancel :: Baton (FiberState a) -> Might {} -> Might {}
+storeCancel = (st, cancel) => Baton.changeDrop(
+  (cur) => where(cur.outcome) {
+    Running =>
+      ({ outcome: cur.outcome, waiters: cur.waiters, cancel })
+
+    _ =>
+      cur
+  },
+  st,
+)
+fork :: Whim a -> Might (Fiber a)
+export fork = (w) => do {
+  st <- Baton.might({ outcome: Running, waiters: [], cancel: Might.mighty({}) })
+  cancel <- fulfillM((f) => settle(st, Finished(Left(f))), (a) => settle(st, Finished(Right(a))), w)
+  _ <- storeCancel(st, cancel)
+  return Might.mighty(Fiber(st))
+}
+join :: Fiber a -> Whim a
+export join = (fib) => where(fib) {
+  Fiber(st) =>
+    Whim(
+      Wish.Wish(
+        (badCB, goodCB) => {
+          // fresh per fulfill, so a cancelled joiner stops listening
+          live = Baton.baton(true)
+
+          deliver = where {
+            Finished(Left(f)) =>
+              badCB(f)
+
+            Finished(Right(a)) =>
+              goodCB(a)
+
+            Killed =>
+              badCB(killedFailure)
+
+            Running =>
+              {}
+          }
+
+          waiter = (out) => Might.Might(
+            () => {
+              if (Might.run(Baton.grab(live))) {
+                deliver(out)
+              } else do {
+                return {}
+              }
+              return {}
+            },
+          )
+
+
+          s = Might.run(Baton.grab(st))
+          where(s.outcome) {
+            Running =>
+              Might.run(
+                Baton.changeDrop(
+                  (cur) => (
+                    { outcome: cur.outcome, waiters: cur.waiters ++ [waiter], cancel: cur.cancel }
+                  ),
+                  st,
+                ),
+              )
+
+            done =>
+              deliver(done)
+          }
+
+          // cancelling a join does not kill the fiber
+          return (_) => {
+            Might.run(Baton.changeDrop((_) => false, live))
+            return {}
+          }
+        },
+      ),
+    )
+}
+// no-op unless Running. Marks Killed before cancelling, so a late completion is ignored.
+kill :: Fiber a -> Might {}
+export kill = (fib) => where(fib) {
+  Fiber(st) =>
+    do {
+      s <- Baton.grab(st)
+      return where(s.outcome) {
+        Running =>
+          do {
+            _ <- Baton.changeDrop(
+              (cur) => ({ outcome: Killed, waiters: [], cancel: cur.cancel }),
+              st,
+            )
+            _ <- s.cancel
+            return Might.forEach((w) => w(Killed), s.waiters)
+          }
+
+        _ =>
+          Might.mighty({})
+      }
+    }
+}

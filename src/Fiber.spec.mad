@@ -1,0 +1,175 @@
+import type { Whim } from "whim"
+import type { Failure } from "whim/Failure"
+
+import { Wish } from "Wish"
+
+import Might from "might"
+import Baton from "might/Baton"
+import Study from "study"
+import { Whim } from "whim"
+import Failure from "whim/Failure"
+
+import Fiber from "@/Fiber"
+import MC from "@/MightCould"
+
+
+
+// memoized: two joins, one run of the work
+Study.report(
+  (_) => Might.run(
+    do {
+      n <- Baton.might(0)
+      fib <- Fiber.fork(MC.fromMight(Baton.changeDrop((c) => c + 1, n)))
+      _ <- MC.fulfillM((_) => Might.mighty({}), (_) => Might.mighty({}), Fiber.join(fib))
+      _ <- MC.fulfillM((_) => Might.mighty({}), (_) => Might.mighty({}), Fiber.join(fib))
+      return Baton.grab(n)
+    },
+  ),
+  "fork runs once; join is memoized",
+  [#[0, 1]],
+)
+// kill: canceller called once, a second kill is a no-op, join then fails
+Study.report(
+  (_) => Might.run(
+    do {
+      cancels <- Baton.might(0)
+      failed <- Baton.might(0)
+      never = Whim(
+        Wish(
+          (_, _) => (_) => {
+            Might.run(Baton.changeDrop((c) => c + 1, cancels))
+            return {}
+          },
+        ),
+      )
+      fib <- Fiber.fork(never)
+      _ <- Fiber.kill(fib)
+      _ <- Fiber.kill(fib)
+      _ <- MC.fulfillM(
+        (_) => Baton.changeDrop((c) => c + 1, failed),
+        (_) => Might.mighty({}),
+        Fiber.join(fib),
+      )
+      c <- Baton.grab(cancels)
+      f <- Baton.grab(failed)
+      return Might.mighty(#[c, f])
+    },
+  ),
+  "kill cancels once and join fails",
+  [#[0, #[1, 1]]],
+)
+// not compiled
+import type { Maybe } from "Maybe"
+
+import { Just, Nothing } from "Maybe"
+
+
+
+// a Whim that completes when the test says so
+controllable :: Baton (Maybe #[Failure -> {}, a -> {}]) -> Whim a
+controllable = (slot) => Whim(
+  Wish(
+    (bad, good) => {
+      Might.run(Baton.changeDrop((_) => Just(#[bad, good]), slot))
+      return (_) => {
+        return {}
+      }
+    },
+  ),
+)
+succeedWith :: Baton (Maybe #[Failure -> {}, a -> {}]) -> a -> Might {}
+succeedWith = (slot, a) => Might.Might(
+  () => {
+    where(Might.run(Baton.grab(slot))) {
+      Just(#[_, good]) =>
+        good(a)
+
+      Nothing =>
+        {}
+    }
+    return {}
+  },
+)
+failWith :: Baton (Maybe #[Failure -> {}, a -> {}]) -> Failure -> Might {}
+failWith = (slot, f) => Might.Might(
+  () => {
+    where(Might.run(Baton.grab(slot))) {
+      Just(#[bad, _]) =>
+        bad(f)
+
+      Nothing =>
+        {}
+    }
+    return {}
+  },
+)
+// late join: registered while Running, delivered when the fiber settles
+Study.report(
+  (_) => Might.run(
+    do {
+      slot <- Baton.might(Nothing)
+      got <- Baton.might(0)
+      fib <- Fiber.fork(controllable(slot))
+      _ <- MC.fulfillM(
+        (_) => Might.mighty({}),
+        (n) => Baton.changeDrop((_) => n, got),
+        Fiber.join(fib),
+      )
+      before <- Baton.grab(got)
+      _ <- succeedWith(slot, 7)
+      after <- Baton.grab(got)
+      return Might.mighty(#[before, after])
+    },
+  ),
+  "late join delivers on settle",
+  [#[0, #[0, 7]]],
+)
+// Left: one join before the failure and one after both get the bad path, neither the good one
+Study.report(
+  (_) => Might.run(
+    do {
+      slot <- Baton.might(Nothing)
+      bads <- Baton.might(0)
+      goods <- Baton.might(0)
+      fib <- Fiber.fork(controllable(slot))
+      onBad = (_) => Baton.changeDrop((c) => c + 1, bads)
+      onGood = (_) => Baton.changeDrop((c) => c + 1, goods)
+      _ <- MC.fulfillM(onBad, onGood, Fiber.join(fib))
+      _ <- failWith(slot, Failure.Failure("t", "c", "m"))
+      _ <- MC.fulfillM(onBad, onGood, Fiber.join(fib))
+      b <- Baton.grab(bads)
+      g <- Baton.grab(goods)
+      return Might.mighty(#[b, g])
+    },
+  ),
+  "join of a failed fiber",
+  [#[0, #[2, 0]]],
+)
+// a cancelled joiner is not delivered to, and the fiber still settles for others
+Study.report(
+  (_) => Might.run(
+    do {
+      slot <- Baton.might(Nothing)
+      cancelled <- Baton.might(0)
+      kept <- Baton.might(0)
+      fib <- Fiber.fork(controllable(slot))
+      cancelJoin <- MC.fulfillM(
+        (_) => Might.mighty({}),
+        (_) => Baton.changeDrop((c) => c + 1, cancelled),
+        Fiber.join(fib),
+      )
+      _ <- MC.fulfillM(
+        (_) => Might.mighty({}),
+        (_) => Baton.changeDrop((c) => c + 1, kept),
+        Fiber.join(fib),
+      )
+      _ <- cancelJoin
+      _ <- succeedWith(slot, 1)
+      c <- Baton.grab(cancelled)
+      k <- Baton.grab(kept)
+      return Might.mighty(#[c, k])
+    },
+  ),
+  "cancelled joiner is skipped",
+  [#[0, #[0, 1]]],
+)
