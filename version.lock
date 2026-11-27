@@ -1,5 +1,5 @@
 {
-  "buildHash": "7866978f14b8ee617a7617a75af51346",
+  "buildHash": "b5764df46245d8a9354757111728c56e",
   "jsApi": {
     "apiInstances": [],
     "apiAliases": {},
@@ -20,5 +20,5 @@
     },
     "apiTypes": {}
   },
-  "versionHash": "25e64aa754c310d45c1e084d574c1bb0"
+  "versionHash": "fbacc30a1f288ebf360ad2de66710082"
 }
