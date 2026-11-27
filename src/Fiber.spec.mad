@@ -173,81 +173,88 @@ Study.report(
   "cancelled joiner is skipped",
   [#[0, #[0, 1]]],
 )
-
-/*
+// /*
 count = (b) => Baton.changeDrop((c) => c + 1, b)
-Study.report(
-  (_) => Might.run(
-    do {
-      slot <- Baton.might(Nothing)
-      released <- Baton.might(0)
-      delivered <- Baton.might(0)
-      cancel <- MC.fulfillM(
-        (_) => count(delivered),
-        (_) => count(delivered),
-        Whim.bracketWithCancel(
-          (_) => MC.fromMight(count(released)),
-          (_) => controllable(slot),
-          Whim.good(1),
-        ),
-      )
-      _ <- cancel
-      r1 <- Baton.grab(released)
-      _ <- succeedWith(slot, 0)
-      r2 <- Baton.grab(released)
-      d <- Baton.grab(delivered)
-      return Might.mighty(#[r1, r2, d])
-    },
-  ),
-  "bracketC: cancel during use",
-  [#[0, #[1, 1, 0]]],
+// these following functions should be retested with `Whim.bracketWithCancel` once we have that loading reliably
+
+bracketedCancelDuringUse = (fn, _) => Might.run(
+  do {
+    slot <- Baton.might(Nothing)
+    released <- Baton.might(0)
+    delivered <- Baton.might(0)
+    cancel <- MC.fulfillM(
+      (_) => count(delivered),
+      (_) => count(delivered),
+      fn((_) => MC.fromMight(count(released)), (_) => controllable(slot), Whim.good(1)),
+    )
+    _ <- cancel
+    r1 <- Baton.grab(released)
+    _ <- succeedWith(slot, 0)
+    r2 <- Baton.grab(released)
+    d <- Baton.grab(delivered)
+    return Might.mighty(#[r1, r2, d])
+  },
 )
-// cancel during acquire: no release yet; a late acquire is released, not delivered
 Study.report(
-  (_) => Might.run(
-    do {
-      slot <- Baton.might(Nothing)
-      released <- Baton.might(0)
-      delivered <- Baton.might(0)
-      cancel <- MC.fulfillM(
-        (_) => count(delivered),
-        (_) => count(delivered),
-        Whim.bracketWithCancel(
-          (_) => MC.fromMight(count(released)),
-          (_) => Whim.good(0),
-          controllable(slot),
-        ),
-      )
-      _ <- cancel
-      r1 <- Baton.grab(released)
-      _ <- succeedWith(slot, 5)
-      r2 <- Baton.grab(released)
-      d <- Baton.grab(delivered)
-      return Might.mighty(#[r1, r2, d])
-    },
-  ),
-  "bracketC: cancel during acquire",
-  [#[0, #[0, 1, 0]]],
+  bracketedCancelDuringUse(Whim.bracket),
+  "bracket: no cancel during use",
+  [#[0, #[0, 1, 1]]],
 )
-// cancel after completion: release ran once and is not repeated
+bracketedCancelDuringAcquire = (fn, _) => Might.run(
+  do {
+    slot <- Baton.might(Nothing)
+    released <- Baton.might(0)
+    delivered <- Baton.might(0)
+    cancel <- MC.fulfillM(
+      (_) => count(delivered),
+      (_) => count(delivered),
+      fn((_) => MC.fromMight(count(released)), (_) => Whim.good(0), controllable(slot)),
+    )
+    _ <- cancel
+    r1 <- Baton.grab(released)
+    _ <- succeedWith(slot, 5)
+    r2 <- Baton.grab(released)
+    d <- Baton.grab(delivered)
+    return Might.mighty(#[r1, r2, d])
+  },
+)
 Study.report(
-  (_) => Might.run(
-    do {
-      released <- Baton.might(0)
-      cancel <- MC.fulfillM(
-        (_) => Might.mighty({}),
-        (_) => Might.mighty({}),
-        Whim.bracketWithCancel(
-          (_) => MC.fromMight(count(released)),
-          (_) => Whim.good(1),
-          Whim.good(2),
-        ),
-      )
-      _ <- cancel
-      return Baton.grab(released)
-    },
-  ),
-  "bracketC: cancel after completion",
+  bracketedCancelDuringAcquire(Whim.bracket),
+  "bracket: no cancel during acquire",
+  [#[0, #[0, 1, 1]]],
+)
+bracketedCancelAfterCompletion = (fn, _) => Might.run(
+  do {
+    released <- Baton.might(0)
+    cancel <- MC.fulfillM(
+      (_) => Might.mighty({}),
+      (_) => Might.mighty({}),
+      fn((_) => MC.fromMight(count(released)), (_) => Whim.good(1), Whim.good(2)),
+    )
+    _ <- cancel
+    return Baton.grab(released)
+  },
+)
+Study.report(
+  bracketedCancelAfterCompletion(Whim.bracket),
+  "bracket: no cancel after completion",
   [#[0, 1]],
 )
-*/
+
+/*
+Study.report(
+  bracketedCancelDuringUse(Whim.bracketWithCancel),
+  "bracketWithCancel: cancel during use",
+  [#[0, #[0, 1, 1]]],
+)
+Study.report(
+  bracketedCancelAfterCompletion(Whim.bracketWithCancel),
+  "bracketWithCancel: cancel after completion",
+  [#[0, 1]],
+)
+Study.report(
+  bracketedCancelDuringAcquire(Whim.bracketWithCancel),
+  "bracketWithCancel: cancel during acquire",
+  [#[0, #[0, 1, 1]]],
+)
+// */
